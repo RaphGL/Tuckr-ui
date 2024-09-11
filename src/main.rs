@@ -1,6 +1,7 @@
 #![warn(clippy::all, rust_2018_idioms, future_incompatible)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 mod app;
+mod cmd;
 
 // When compiling natively:
 fn main() -> eframe::Result {

@@ -1,8 +1,9 @@
 use std::fmt::Display;
-use tuckr::{dotfiles::Dotfile};
+use tuckr::dotfiles::Dotfile;
 /// the tuckr state 
 use tuckr::Cli;
 use egui::Color32;
+use crate::cmd::run;
 
 #[derive(thiserror::Error, Debug)]
 pub enum CmdError {
@@ -20,7 +21,7 @@ impl Display for CmdError {
 }
 
 /// enum for each page/command
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(Default, serde::Deserialize, serde::Serialize, PartialEq, Clone)]
 pub enum Page {
     #[default]
     Help,
@@ -38,22 +39,37 @@ pub enum Page {
 }
 
 impl Page {
-/// Prepare for runing a command, push will only use the first group\
-/// `\*` is all groups
-pub fn try_into_cli(self, groups: Vec<String>) -> Option<Cli> {
-    match self {
-        Page::Help => None,
-        Page::Status => Some(Cli::Status { groups: Some(groups) }),
-        // use combobox for exclude and something groups
-        Page::Add(exclude, force, adopt) => Some(Cli::Add { groups, exclude: exclude.unwrap_or_default(), force, adopt }),
-        Page::Rm(exclude) => Some(Cli::Rm { groups, exclude: exclude.unwrap_or_default() }),
-        Page::Set(exclude, force, adopt) => Some(Cli::Set { groups, exclude: exclude.unwrap_or_default(), force, adopt }),
-        Page::Push(f) => Some(Cli::Push { group: groups[0].clone(), files: f }),
-        Page::Pop => Some(Cli::Pop { groups }),
-        // on macos create $HOME/.dotfiles insted of using init
-        Page::Init => Some(Cli::Init)
+    /// Prepare for runing a command, push will only use the first group\
+    /// `\*` is all groups, None if page is help
+    pub fn try_into_cli(self, groups: Vec<String>) -> Option<Cli> {
+        match self {
+            Page::Help => None,
+            Page::Status => Some(Cli::Status { groups: None }),
+            // use combobox for exclude and something groups
+            Page::Add(exclude, force, adopt) => Some(Cli::Add { groups, exclude: exclude.unwrap_or_default(), force, adopt }),
+            Page::Rm(exclude) => Some(Cli::Rm { groups, exclude: exclude.unwrap_or_default() }),
+            Page::Set(exclude, force, adopt) => Some(Cli::Set { groups, exclude: exclude.unwrap_or_default(), force, adopt }),
+            Page::Push(f) => Some(Cli::Push { group: groups[0].clone(), files: f }),
+            Page::Pop => Some(Cli::Pop { groups }),
+            // on macos create $HOME/.dotfiles insted of using init
+            Page::Init => Some(Cli::Init)
+        }
     }
 }
+
+impl Display for Page {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Page::Add(_, _, _) => write!(f, "Add"),
+            Page::Help => write!(f, "Help"),
+            Page::Init => write!(f, "Init"),
+            Page::Pop => write!(f, "Pop"),
+            Page::Push(_) => write!(f, "Push"),
+            Page::Rm(_) => write!(f, "Rm"),
+            Page::Set(_, _, _) => write!(f, "Set"),
+            Page::Status => write!(f, "Status"),
+        }
+    }
 }
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -68,11 +84,17 @@ pub struct TemplateApp {
     /// if the adopt flag is used on add and set
     #[serde(skip)]
     adopt: bool,
+    /// The selected groups
+    #[serde(skip)]
+    groups: Option<Vec<String>>,
+    /// exclude
+    exclude: Option<Vec<String>>,
     label: String,
     value: f32,
 }
+// todo add code block for hooks with the egui syntax_highlighting feature
 
-const PANEL_FILL: Color32 = Color32::from_rgba_premultiplied(5, 18, 29, 245);
+const PANEL_FILL: Color32 = Color32::from_rgba_premultiplied(5, 18, 29, 247);
 
 impl TemplateApp {
     /// Called once before the first frame.
@@ -118,16 +140,12 @@ impl eframe::App for TemplateApp {
             // The top panel is often a good place for a menu bar:
 
             egui::menu::bar(ui, |ui| {
-                // NOTE: no File->Quit on web pages!
-                let is_web = cfg!(target_arch = "wasm32");
-                if !is_web {
-                    ui.menu_button("File", |ui| {
-                        if ui.button("Quit").clicked() {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                        }
-                    });
-                    ui.add_space(16.0);
-                }
+                ui.menu_button("File", |ui| {
+                    if ui.button("Quit").clicked() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                });
+                ui.add_space(16.0);
 
                 egui::widgets::global_dark_light_mode_buttons(ui);
             });
@@ -135,12 +153,36 @@ impl eframe::App for TemplateApp {
 
         egui::CentralPanel::default().frame(egui::Frame::default().fill(PANEL_FILL).inner_margin(3.0)).show(ctx, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
-            ui.heading("eframe template");
+            ui.heading("Tuckr UI");
 
             ui.horizontal(|ui| {
-                ui.label("Write something: ");
+                egui::ComboBox::from_id_source(4)
+                    .selected_text(format!("{}", self.page))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut self.page, Page::Add(self.exclude.clone(), self.force, self.adopt), "Add");
+                        ui.selectable_value(&mut self.page, Page::Help, "Help");
+                        ui.selectable_value(&mut self.page, Page::Init, "Init");
+                        ui.selectable_value(&mut self.page, Page::Pop, "Pop");
+                        ui.selectable_value(&mut self.page, Page::Push(self.groups.clone().unwrap_or(vec![self.label.clone()])), "Push");
+                        ui.selectable_value(&mut self.page, Page::Rm(self.exclude.clone()), "Rm");
+                        ui.selectable_value(&mut self.page, Page::Set(self.exclude.clone(), self.force, self.adopt), "Set");
+                        ui.selectable_value(&mut self.page, Page::Status, "Status");
+                    });
+                // todo use maiti selcte radio buttons
+                ui.label("Groups");
                 ui.text_edit_singleline(&mut self.label);
             });
+            ui.horizontal(|ui| {
+                ui.checkbox(&mut self.force, "Force");
+                ui.checkbox(&mut self.adopt, "Adopt");
+            });
+
+            if ui.button("Exacute").clicked() {
+                let _ = match self.page.clone().try_into_cli(self.groups.clone().unwrap_or(vec![r"\*".into()])) {
+                    Some(cli) => run(cli),
+                    None => {Ok(self.label = "select a group".into())},
+                };
+            }
 
             ui.add(egui::Slider::new(&mut self.value, 0.0..=10.0).text("value"));
             if ui.button("Increment").clicked() {
