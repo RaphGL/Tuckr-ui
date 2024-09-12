@@ -95,21 +95,63 @@ pub struct TemplateApp {
 // todo add code block for hooks with the egui syntax_highlighting feature
 
 const PANEL_FILL: Color32 = Color32::from_rgba_premultiplied(5, 18, 29, 247);
+const BUTTON_SIZE: f32 = 7.0;
+const ROUNDING: f32 = 5.5;
+
+fn visuals() -> egui::Visuals {
+    let mut visuals = egui::Visuals::default();
+
+    // Background
+    visuals.window_stroke = egui::Stroke::NONE;
+    visuals.extreme_bg_color = Color32::from_hex("#11304390").unwrap();
+    visuals.code_bg_color = Color32::from_hex("#01243390").unwrap();
+    visuals.faint_bg_color = Color32::from_hex("#01243360").unwrap();
+    visuals.panel_fill = PANEL_FILL;
+    visuals.override_text_color = Color32::from_hex("#14AAA9").ok();
+    visuals.widgets.noninteractive.bg_stroke.color = Color32::from_hex("#113443").unwrap();
+    // Widget size
+    visuals.widgets.inactive.expansion = BUTTON_SIZE;
+    visuals.widgets.hovered.expansion = BUTTON_SIZE;
+    visuals.widgets.active.expansion = BUTTON_SIZE;
+    visuals.widgets.open.expansion = BUTTON_SIZE;
+    // Widget rounding
+    visuals.widgets.inactive.rounding = ROUNDING.into();
+    visuals.widgets.hovered.rounding = ROUNDING.into();
+    visuals.widgets.active.rounding = ROUNDING.into();
+    visuals.widgets.open.rounding = ROUNDING.into();
+    // Widget color
+    visuals.widgets.inactive.bg_fill = Color32::from_rgb(65, 65, 110);
+    visuals.widgets.hovered.bg_fill = Color32::from_rgb(75, 75, 115);
+    visuals.widgets.active.bg_fill = Color32::from_rgb(85, 85, 125);
+    visuals.widgets.open.bg_fill = Color32::from_rgb(75, 75, 115);
+
+    visuals.widgets.inactive.weak_bg_fill = Color32::from_rgb(65, 65, 110);
+    visuals.widgets.hovered.weak_bg_fill = Color32::from_rgb(75, 75, 115);
+    visuals.widgets.active.weak_bg_fill = Color32::from_rgb(85, 85, 125);
+    visuals.widgets.open.weak_bg_fill = Color32::from_rgb(75, 75, 115);
+
+    visuals
+}
 
 impl TemplateApp {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
-        let mut visuals = egui::Visuals::default();
+        cc.egui_ctx.set_visuals(visuals());
 
-        visuals.window_stroke = egui::Stroke::NONE;
-        visuals.extreme_bg_color = Color32::from_hex("#CBE0F0FA").unwrap();
-        visuals.code_bg_color = Color32::from_hex("#CBE0F0").unwrap();
-        visuals.faint_bg_color = Color32::from_hex("#01243360").unwrap();
-        visuals.panel_fill = PANEL_FILL;
-        visuals.override_text_color = Color32::from_hex("#14AAA9").ok();
-        cc.egui_ctx.set_visuals(visuals);
+        cc.egui_ctx.style_mut(|style|{
+            for (text_style, font_id) in style.text_styles.iter_mut() {
+                font_id.size = match text_style {
+                    egui::TextStyle::Small => 12.0,
+                    egui::TextStyle::Body => 14.0,
+                    egui::TextStyle::Monospace => 14.0,
+                    egui::TextStyle::Button => 15.0,
+                    egui::TextStyle::Heading => 23.0,
+                    egui::TextStyle::Name(_) => 16.0,
+                }
+            }
+        });
 
         // Load previous app state (if any).
         // Note that you must enable the `persistence` feature for this to work.
@@ -122,6 +164,7 @@ impl TemplateApp {
 }
 
 impl eframe::App for TemplateApp {
+    /// make the window transparent
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
         [0.0, 0.0, 0.0, 0.0]
     }
@@ -136,68 +179,58 @@ impl eframe::App for TemplateApp {
         // Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
         // For inspiration and more examples, go to https://emilk.github.io/egui
 
-        egui::TopBottomPanel::top("top_panel").frame(egui::Frame::default().fill(PANEL_FILL).inner_margin(3.0)).show(ctx, |ui| {
-            // The top panel is often a good place for a menu bar:
-
-            egui::menu::bar(ui, |ui| {
-                ui.menu_button("File", |ui| {
-                    if ui.button("Quit").clicked() {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                    }
-                });
-                ui.add_space(16.0);
-
-                egui::widgets::global_dark_light_mode_buttons(ui);
-            });
-        });
-
-        egui::CentralPanel::default().frame(egui::Frame::default().fill(PANEL_FILL).inner_margin(3.0)).show(ctx, |ui| {
+        egui::CentralPanel::default().frame(egui::Frame::default().fill(PANEL_FILL).inner_margin(egui::Margin::symmetric(12.0, 12.0))).show(ctx, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
             ui.heading("Tuckr UI");
 
-            ui.horizontal(|ui| {
-                egui::ComboBox::from_id_source(4)
-                    .selected_text(format!("{}", self.page))
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.page, Page::Add(self.exclude.clone(), self.force, self.adopt), "Add");
-                        ui.selectable_value(&mut self.page, Page::Help, "Help");
-                        ui.selectable_value(&mut self.page, Page::Init, "Init");
-                        ui.selectable_value(&mut self.page, Page::Pop, "Pop");
-                        ui.selectable_value(&mut self.page, Page::Push(self.groups.clone().unwrap_or(vec![self.label.clone()])), "Push");
-                        ui.selectable_value(&mut self.page, Page::Rm(self.exclude.clone()), "Rm");
-                        ui.selectable_value(&mut self.page, Page::Set(self.exclude.clone(), self.force, self.adopt), "Set");
-                        ui.selectable_value(&mut self.page, Page::Status, "Status");
-                    });
-                // todo use maiti selcte radio buttons
-                ui.label("Groups");
-                ui.text_edit_singleline(&mut self.label);
-            });
-            ui.horizontal(|ui| {
-                ui.checkbox(&mut self.force, "Force");
-                ui.checkbox(&mut self.adopt, "Adopt");
-            });
-
-            if ui.button("Exacute").clicked() {
-                let _ = match self.page.clone().try_into_cli(self.groups.clone().unwrap_or(vec![r"\*".into()])) {
-                    Some(cli) => run(cli),
-                    None => {Ok(self.label = "select a group".into())},
-                };
-            }
-
-            ui.add(egui::Slider::new(&mut self.value, 0.0..=10.0).text("value"));
-            if ui.button("Increment").clicked() {
-                self.value += 1.0;
-            }
-
+            ui.style_mut().spacing.item_spacing = egui::vec2(15.0, 15.0);
             ui.separator();
 
-            ui.add(egui::github_link_file!(
-                "https://github.com/emilk/eframe_template/blob/main/",
-                "Source code."
-            ));
+            ui.vertical_centered(|ui| {
 
-            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                egui::warn_if_debug_build(ui);
+                ui.horizontal(|ui| {
+                    egui::ComboBox::from_id_source(4)
+                        .selected_text(format!("{}", self.page))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.page, Page::Add(self.exclude.clone(), self.force, self.adopt), "Add");
+                            ui.selectable_value(&mut self.page, Page::Help, "Help");
+                            ui.selectable_value(&mut self.page, Page::Init, "Init");
+                            ui.selectable_value(&mut self.page, Page::Pop, "Pop");
+                            ui.selectable_value(&mut self.page, Page::Push(self.groups.clone().unwrap_or(vec![self.label.clone()])), "Push");
+                            ui.selectable_value(&mut self.page, Page::Rm(self.exclude.clone()), "Rm");
+                            ui.selectable_value(&mut self.page, Page::Set(self.exclude.clone(), self.force, self.adopt), "Set");
+                            ui.selectable_value(&mut self.page, Page::Status, "Status");
+                        });
+
+                    ui.add_space(10.0);
+                    // todo use maiti selcte radio buttons
+                    // ui.label("Groups");
+                    ui.text_edit_singleline(&mut self.label);
+                });
+
+                // flags
+                ui.horizontal(|ui| {
+                    ui.style_mut().spacing.item_spacing = egui::vec2(5.0, 5.0);
+
+                    ui.checkbox(&mut self.force, "");
+                    ui.label("Force");
+                    ui.add_space(10.0);
+                    ui.checkbox(&mut self.adopt, "");
+                    ui.label("Adopt");
+
+                    ui.style_mut().spacing.item_spacing = egui::vec2(15.0, 15.0);
+                });
+
+                if ui.button("Exacute").clicked() {
+                    let _ = match self.page.clone().try_into_cli(self.groups.clone().unwrap_or(vec![r"\*".into()])) {
+                        Some(cli) => run(cli),
+                        None => {Ok(self.label = "select a group".into())},
+                    };
+                }
+
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                    egui::warn_if_debug_build(ui);
+                });
             });
         });
     }
