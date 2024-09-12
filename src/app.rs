@@ -97,6 +97,11 @@ pub struct TemplateApp {
 const PANEL_FILL: Color32 = Color32::from_rgba_premultiplied(5, 18, 29, 247);
 const BUTTON_SIZE: f32 = 7.0;
 const ROUNDING: f32 = 5.5;
+// colors
+const INACTIVE: Color32 = Color32::from_rgb(62, 62, 110);
+const HOVERED: Color32 = Color32::from_rgb(72, 72, 115);
+const ACTIVE: Color32 = Color32::from_rgb(82, 82, 125);
+const OPEN: Color32 = Color32::from_rgb(74, 74, 115);
 
 fn visuals() -> egui::Visuals {
     let mut visuals = egui::Visuals::default();
@@ -120,15 +125,15 @@ fn visuals() -> egui::Visuals {
     visuals.widgets.active.rounding = ROUNDING.into();
     visuals.widgets.open.rounding = ROUNDING.into();
     // Widget color
-    visuals.widgets.inactive.bg_fill = Color32::from_rgb(65, 65, 110);
-    visuals.widgets.hovered.bg_fill = Color32::from_rgb(75, 75, 115);
-    visuals.widgets.active.bg_fill = Color32::from_rgb(85, 85, 125);
-    visuals.widgets.open.bg_fill = Color32::from_rgb(75, 75, 115);
+    visuals.widgets.inactive.bg_fill = INACTIVE;
+    visuals.widgets.hovered.bg_fill = HOVERED;
+    visuals.widgets.active.bg_fill = ACTIVE;
+    visuals.widgets.open.bg_fill = OPEN;
 
-    visuals.widgets.inactive.weak_bg_fill = Color32::from_rgb(65, 65, 110);
-    visuals.widgets.hovered.weak_bg_fill = Color32::from_rgb(75, 75, 115);
-    visuals.widgets.active.weak_bg_fill = Color32::from_rgb(85, 85, 125);
-    visuals.widgets.open.weak_bg_fill = Color32::from_rgb(75, 75, 115);
+    visuals.widgets.inactive.weak_bg_fill = INACTIVE;
+    visuals.widgets.hovered.weak_bg_fill = HOVERED;
+    visuals.widgets.active.weak_bg_fill = ACTIVE;
+    visuals.widgets.open.weak_bg_fill = OPEN;
 
     visuals
 }
