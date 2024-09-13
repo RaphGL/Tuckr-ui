@@ -3,3 +3,4 @@
 mod app;
 pub use app::TemplateApp;
 pub(crate) mod cmd;
+pub(crate) mod groups;

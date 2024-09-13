@@ -30,7 +30,7 @@ pub use symlinks::remove_cmd;
 /// Starus command
 pub use symlinks::status_cmd;
 
-pub fn run(cli: Cli) -> Result<(), std::process::ExitCode> {
+pub fn run(cli: Cli) -> (String, std::process::ExitCode) {
 	match cli {
 		Cli::Set {
 			groups, exclude, force, adopt,
