@@ -128,6 +128,11 @@ pub struct TemplateApp {
 	/// The last opened hook script
 	#[serde(skip)]
 	code: String,
+	/// Open hook shell file
+	#[serde(skip)]
+	opened_hook: Option<PathBuf>,
+	#[serde(skip)]
+	open_file_dialog: Option<FileDialog>,
 }
 // todo add code block for hooks with the egui syntax_highlighting feature
 
@@ -243,6 +248,8 @@ impl Default for TemplateApp {
 			label: String::new(),
 			output: String::new(),
 			code: String::new(),
+			opened_hook: None,
+			open_file_dialog: None,
 		}
 	}
 }
@@ -320,6 +327,7 @@ impl eframe::App for TemplateApp {
 						// icon for refresh button
 						let refresh_icon = Image::new(include_image!("../assets/refresh.svg"));
 
+						// check if refresh button or CTRL+R are presed
 						if ui.input_mut(|i| egui::InputState::consume_shortcut(i, &KeyboardShortcut { modifiers: Modifiers::COMMAND, logical_key: egui::Key::R }))
 						|| ui.add(egui::Button::image(refresh_icon)).clicked() {
 							self.check_count = 0;
@@ -346,7 +354,7 @@ impl eframe::App for TemplateApp {
 					// if the page is hooks list groups and hook files then open it in a editer
 					if self.page == Page::Hooks {
 						// todo file selector close on select
-						// file_picker(self, ui);
+						file_picker(self, ui);
 						// todo load selected file in to editer
 						code_editer(self, ui);
 					}
@@ -430,23 +438,28 @@ fn code_editer(app: &mut TemplateApp, ui: &mut Ui) {
 	// opened_file: Option<PathBuf>,
 	// open_file_dialog: Option<FileDialog>,
 
-// fn file_picker(app: &mut TemplateApp, ui: &mut Ui) {
-// 	if (ui.button("Open")).clicked() {
-// 		// Show only files with the extension "txt".
-// 		let filter = Box::new({
-// 			let ext = Some(OsStr::new("txt"));
-// 			move |path: &Path| -> bool { path.extension() == ext }
-// 		});
-// 		let mut dialog = FileDialog::open_file(app.opened_file.clone()).show_files_filter(filter);
-// 		dialog.open();
-// 		app.open_file_dialog = Some(dialog);
-// 		}
+fn file_picker(app: &mut TemplateApp, ui: &mut Ui) {
+	if (ui.button("Open")).clicked() {
+		// Show only files with the extension "sh".
+		let filter = Box::new({
+			let ext = Some(OsStr::new("sh"));
+			move |path: &Path| -> bool { path.extension() == ext }
+		});
 
-// 		if let Some(dialog) = &mut app.open_file_dialog {
-// 		if dialog.show(ctx).selected() {
-// 			if let Some(file) = dialog.path() {
-// 			app.opened_file = Some(file.to_path_buf());
-// 			}
-// 		}
-// 		}
-// }
+		let mut dialog = FileDialog::open_file(
+			match tuckr::dotfiles::get_dotfiles_path(&mut "".into()) {
+				Ok(p) => Some(p.join("Hooks")),
+				Err(e) => return app.output.push_str(&e.to_string()),
+			}).show_files_filter(filter);
+		dialog.open();
+		app.open_file_dialog = Some(dialog);
+	}
+
+	if let Some(dialog) = &mut app.open_file_dialog {
+		if dialog.show(ui.ctx()).selected() {
+			if let Some(file) = dialog.path() {
+			app.opened_hook = Some(file.to_path_buf());
+			}
+		}
+	}
+}
