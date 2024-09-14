@@ -5,6 +5,8 @@ use std::fmt::Display;
 use std::process::ExitCode;
 use std::thread::{self, JoinHandle};
 use tuckr::dotfiles::{Dotfile, ReturnCode};
+use egui_file::FileDialog;
+use std::{ffi::OsStr, path::{Path, PathBuf}};
 /// the tuckr state
 use tuckr::Cli;
 
@@ -318,8 +320,9 @@ impl eframe::App for TemplateApp {
 						// icon for refresh button
 						let refresh_icon = Image::new(include_image!("../assets/refresh.svg"));
 
-						if ui.add(egui::Button::image(refresh_icon)).clicked() {
-							// .shortcut_text(&KeyboardShortcut { modifiers: Modifiers::COMMAND, logical_key: egui::Key::R }) {
+						if ui.input_mut(|i| egui::InputState::consume_shortcut(i, &KeyboardShortcut { modifiers: Modifiers::COMMAND, logical_key: egui::Key::R }))
+						|| ui.add(egui::Button::image(refresh_icon)).clicked() {
+							self.check_count = 0;
 							groups_handle = Some(thread::spawn(|| {
 								let mut output = "".to_string();
 								(crate::groups::load_groups(&mut output), output)
@@ -342,7 +345,9 @@ impl eframe::App for TemplateApp {
 
 					// if the page is hooks list groups and hook files then open it in a editer
 					if self.page == Page::Hooks {
-						// todo file selector
+						// todo file selector close on select
+						// file_picker(self, ui);
+						// todo load selected file in to editer
 						code_editer(self, ui);
 					}
 
@@ -421,3 +426,27 @@ fn code_editer(app: &mut TemplateApp, ui: &mut Ui) {
 		);
 	});
 }
+
+	// opened_file: Option<PathBuf>,
+	// open_file_dialog: Option<FileDialog>,
+
+// fn file_picker(app: &mut TemplateApp, ui: &mut Ui) {
+// 	if (ui.button("Open")).clicked() {
+// 		// Show only files with the extension "txt".
+// 		let filter = Box::new({
+// 			let ext = Some(OsStr::new("txt"));
+// 			move |path: &Path| -> bool { path.extension() == ext }
+// 		});
+// 		let mut dialog = FileDialog::open_file(app.opened_file.clone()).show_files_filter(filter);
+// 		dialog.open();
+// 		app.open_file_dialog = Some(dialog);
+// 		}
+
+// 		if let Some(dialog) = &mut app.open_file_dialog {
+// 		if dialog.show(ctx).selected() {
+// 			if let Some(file) = dialog.path() {
+// 			app.opened_file = Some(file.to_path_buf());
+// 			}
+// 		}
+// 		}
+// }

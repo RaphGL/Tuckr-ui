@@ -24,6 +24,7 @@ log = "0.4"
 
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }
+egui_file = "0.18"
 
 # Optimize all dependencies even in debug builds:
 [profile.dev.package."*"]
