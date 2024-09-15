@@ -1,7 +1,9 @@
 use crate::cmd::run;
 use egui::{Color32, Ui};
 use egui::{Context, Image, Modifiers, KeyboardShortcut, include_image};
+use egui_multiselect::MultiSelect;
 use std::fmt::Display;
+use std::{fs, io};
 use std::process::ExitCode;
 use std::thread::{self, JoinHandle};
 use tuckr::dotfiles::{Dotfile, ReturnCode};
@@ -13,7 +15,7 @@ use tuckr::Cli;
 #[derive(thiserror::Error, Debug)]
 pub enum CmdError {
 	Help,
-	Io(#[from] std::io::Error),
+	Io(#[from] io::Error),
 }
 
 impl Display for CmdError {
@@ -240,7 +242,7 @@ impl Default for TemplateApp {
 		Self {
 			force: false,
 			adopt: false,
-			check_count: 980,
+			check_count: 9970,
 			page: Page::default(),
 			groups: None,
 			exclude: None,
@@ -270,7 +272,7 @@ impl eframe::App for TemplateApp {
 		// Put your widgets into a `SidePanel`, `TopBottomPanel`, `CentralPanel`, `Window` or `Area`.
 		// For inspiration and more examples, go to https://emilk.github.io/egui
 		let mut groups_handle: Option<JoinHandle<(Result<Vec<String>, ReturnCode>, String)>> = None;
-		if self.check_count >= 1000 {
+		if self.check_count >= 10000 {
 			groups_handle = Some(thread::spawn(|| {
 				let mut output = "".to_string();
 				(crate::groups::load_groups(&mut output), output)
@@ -320,9 +322,6 @@ impl eframe::App for TemplateApp {
 							});
 
 						ui.add_space(10.0);
-						// todo use maiti selcte radio buttons
-						// ui.label("Groups");
-						ui.text_edit_singleline(&mut self.label);
 
 						// icon for refresh button
 						let refresh_icon = Image::new(include_image!("../assets/refresh.svg"));
@@ -337,6 +336,12 @@ impl eframe::App for TemplateApp {
 							}));
 						}
 					});
+
+					ui.end_row();
+					// group  selector
+					if self.found_groups.is_some() {
+						group_select(self, ui);
+					}
 
 					// flags
 					ui.horizontal(|ui| {
@@ -353,21 +358,22 @@ impl eframe::App for TemplateApp {
 
 					// if the page is hooks list groups and hook files then open it in a editer
 					if self.page == Page::Hooks {
-						// todo file selector close on select
 						file_picker(self, ui);
-						// todo load selected file in to editer
+						// todo save to file
 						code_editer(self, ui);
 					}
 
 					// groups
 					ui.label(format_vec_str(&mut self.found_groups.clone().unwrap_or(vec!["".into()])));
 
-					if ui.button("Exacute").clicked() {
-						match self.page.clone()
-						.into_cli(self.groups.clone().unwrap_or(vec![r"\*".into()])) {
-							Ok(cli) => { self.output = run(cli).0 },
-							Err(h) => { self.output = h; self.label = "select a group".into(); },
-						};
+					if self.page != Page::Hooks {
+						if ui.button("Exacute").clicked() {
+							match self.page.clone()
+							.into_cli(self.groups.clone().unwrap_or(vec![r"\*".into()])) {
+								Ok(cli) => { self.output = run(cli).0 },
+								Err(h) => { self.output = h; self.label = "select a group".into(); },
+							};
+						}
 					}
 
 					ui.label(&self.output);
@@ -393,7 +399,11 @@ impl eframe::App for TemplateApp {
 
 		match groups_handle {
 			Some(groups) => match groups.join() {
-				Ok(g) => { self.output.push_str(&g.1); self.found_groups = g.0.ok() },
+				Ok(g) => {
+					self.output.push_str(&g.1);
+					self.found_groups = g.0.ok();
+					self.groups = self.found_groups.clone()
+				},
 				Err(_) => (),
 			},
 			None => (),
@@ -404,12 +414,20 @@ impl eframe::App for TemplateApp {
 fn code_editer(app: &mut TemplateApp, ui: &mut Ui) {
 	let theme =
 	egui_extras::syntax_highlighting::CodeTheme::from_style(ui.style()); //from_memory(ui.ctx());
-	// ui.collapsing("Theme", |ui| {
-	// 	ui.group(|ui| {
-	// 		theme.ui(ui);
-	// 		theme.clone().store_in_memory(ui.ctx());
-	// 	});
-	// });
+	// todo patch egui_extras to use tmTheme file
+
+	match &app.open_file_dialog {
+		Some(d) => {
+			if &d.selected() == &true {
+				// set the contens of the code window to the selected file
+				match &app.opened_hook {
+					Some(s) => app.code = String::from_utf8_lossy(&fs::read(&s).unwrap()).into(),
+					None => (),
+				}
+			}
+		},
+		None => (),
+	}
 
 	let mut layouter = |ui: &egui::Ui, code: &str, wrap_width: f32| {
 		let mut layout_job = egui_extras::syntax_highlighting::highlight(
@@ -439,27 +457,74 @@ fn code_editer(app: &mut TemplateApp, ui: &mut Ui) {
 	// open_file_dialog: Option<FileDialog>,
 
 fn file_picker(app: &mut TemplateApp, ui: &mut Ui) {
-	if (ui.button("Open")).clicked() {
-		// Show only files with the extension "sh".
-		let filter = Box::new({
-			let ext = Some(OsStr::new("sh"));
-			move |path: &Path| -> bool { path.extension() == ext }
-		});
+	// todo add new hooks for goups button
+	// icons
+	let folder_icon = Image::new(include_image!("../assets/folder.svg")).fit_to_original_size(1.05);
+	let save_icon = Image::new(include_image!("../assets/save.svg"));
 
-		let mut dialog = FileDialog::open_file(
-			match tuckr::dotfiles::get_dotfiles_path(&mut "".into()) {
-				Ok(p) => Some(p.join("Hooks")),
-				Err(e) => return app.output.push_str(&e.to_string()),
-			}).show_files_filter(filter);
-		dialog.open();
-		app.open_file_dialog = Some(dialog);
-	}
+	ui.horizontal(|ui| {
+		if (ui.add(egui::Button::image_and_text(folder_icon, "Open Hooks"))).clicked() {
+			// Show only files with the extension "sh".
+			let filter = Box::new({
+				let ext = Some(OsStr::new("sh"));
+				move |path: &Path| -> bool { path.extension() == ext }
+			});
+
+			let mut dialog = FileDialog::open_file(
+				// get hooks path
+				match tuckr::dotfiles::get_dotfiles_path(&mut "".into()) {
+					Ok(p) => Some(p.join("Hooks")),
+					Err(e) => return app.output.push_str(&e.to_string()),
+				}).show_files_filter(filter);
+
+			dialog.open();
+			app.open_file_dialog = Some(dialog);
+		}
+
+		if (ui.add(egui::Button::image(save_icon))).clicked() {
+			let save = fs::write(
+				match &app.opened_hook {
+						Some(p) => p,
+						None => return,
+					},
+				&app.code
+			);
+			match save {
+				Ok(()) => app.output = "saved".to_string(),
+				Err(e) => app.output = e.to_string(),
+			}
+		}
+	});
 
 	if let Some(dialog) = &mut app.open_file_dialog {
-		if dialog.show(ui.ctx()).selected() {
+		if dialog.show(ui.ctx(), ui.visuals()).selected() {
 			if let Some(file) = dialog.path() {
 			app.opened_hook = Some(file.to_path_buf());
 			}
 		}
 	}
+}
+
+fn group_select(app: &mut TemplateApp, ui: &mut Ui) {
+	// egui::RadioButton::::from_label("Take your pick")
+	// .selected_text(format!("{}", &app.found_groups[app.groups]))
+	// .show_ui(ui, |ui| {
+		
+	// 	for i in 0..app.found_groups.len() {
+	// 		let value = ui.selectable_value(&mut &app.found_groups[i], &app.found_groups[app.groups], &app.found_groups[i]);
+	// 		if (value.clicked()) {
+	// 			app.groups = i;
+	// 		}
+	// 	}
+	// });
+
+	ui.add(MultiSelect::new(
+		"test_multiselect",
+		&mut app.groups.as_mut().unwrap().clone(),
+		&mut app.groups.as_mut().unwrap(),
+		app.found_groups.as_ref().unwrap(),
+		|ui, _text| ui.selectable_label(false, _text),
+		&255,
+		&mut false,
+	));
 }

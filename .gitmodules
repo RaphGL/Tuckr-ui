@@ -1,0 +1,6 @@
+[submodule "src/filepicker"]
+	path = src/filepicker
+	url = https://github.com/Barugon/egui_file.git
+[submodule "src/multiselect"]
+	path = src/multiselect
+	url = https://github.com/frankvgompel/egui-multiselect
