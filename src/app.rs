@@ -1,14 +1,11 @@
 use crate::cmd::run;
-use egui::{Color32, Ui};
-use egui::{Context, Image, Modifiers, KeyboardShortcut, include_image};
+use egui::{Color32, DroppedFile, Ui};
+use egui::{Image, Modifiers, KeyboardShortcut, include_image};
 use egui_multiselect::MultiSelect;
 use std::fmt::Display;
 use std::{fs, io};
-use std::process::ExitCode;
 use std::thread::{self, JoinHandle};
-use tuckr::dotfiles::{Dotfile, ReturnCode};
-use egui_file::FileDialog;
-use std::{ffi::OsStr, path::{Path, PathBuf}};
+use tuckr::dotfiles::ReturnCode;
 /// the tuckr state
 use tuckr::Cli;
 
@@ -110,7 +107,7 @@ pub struct TemplateApp {
 	adopt: bool,
 	/// timer between checking groups
 	#[serde(skip)]
-	check_count: u32,
+	pub check_count: u32,
 	/// exclude
 	exclude: Option<Vec<String>>,
 	/// if the force flag is used on add and set
@@ -124,18 +121,19 @@ pub struct TemplateApp {
 	groups: Option<Vec<String>>,
 	label: String,
 	#[serde(skip)]
-	output: String,
+	pub output: String,
 	/// The page with command data incoded
 	page: Page,
 	/// The last opened hook script
 	#[serde(skip)]
-	code: String,
+	pub code: String,
 	/// Open hook shell file
 	#[serde(skip)]
-	opened_hook: Option<PathBuf>,
+	pub opened_hook: Option<String>,
 	#[serde(skip)]
-	open_file_dialog: Option<FileDialog>,
+	pub dropped_files: Vec<DroppedFile>,
 }
+
 // todo add code block for hooks with the egui syntax_highlighting feature
 
 const PANEL_FILL: Color32 = Color32::from_rgba_premultiplied(5, 18, 29, 247);
@@ -251,7 +249,7 @@ impl Default for TemplateApp {
 			output: String::new(),
 			code: String::new(),
 			opened_hook: None,
-			open_file_dialog: None,
+			dropped_files: Vec::new(),
 		}
 	}
 }
@@ -277,7 +275,7 @@ impl eframe::App for TemplateApp {
 				let mut output = "".to_string();
 				(crate::groups::load_groups(&mut output), output)
 			}));
-			self.check_count = 0
+			self.check_count = 0;
 		}
 		self.check_count += 1;
 
@@ -358,8 +356,24 @@ impl eframe::App for TemplateApp {
 
 					// if the page is hooks list groups and hook files then open it in a editer
 					if self.page == Page::Hooks {
-						file_picker(self, ui);
-						// todo save to file
+						let save_icon = Image::new(include_image!("../assets/save.svg")).fit_to_original_size(0.23);
+						ui.horizontal(|ui| {
+							if (ui.add(egui::Button::image(save_icon))).clicked() {
+								let save = fs::write(
+									match &self.opened_hook {
+											Some(p) => p,
+											None => return,
+										},
+									&self.code
+								);
+								match save {
+									Ok(()) => self.output = "saved".to_string(),
+									Err(e) => self.output = e.to_string(),
+								}
+							}
+							crate::filepicker::file_picker(self, ui);
+						});
+
 						code_editer(self, ui);
 					}
 
@@ -416,18 +430,16 @@ fn code_editer(app: &mut TemplateApp, ui: &mut Ui) {
 	egui_extras::syntax_highlighting::CodeTheme::from_style(ui.style()); //from_memory(ui.ctx());
 	// todo patch egui_extras to use tmTheme file
 
-	match &app.open_file_dialog {
-		Some(d) => {
-			if &d.selected() == &true {
-				// set the contens of the code window to the selected file
-				match &app.opened_hook {
-					Some(s) => app.code = String::from_utf8_lossy(&fs::read(&s).unwrap()).into(),
-					None => (),
-				}
-			}
-		},
-		None => (),
-	}
+	// match &app.opened_hook {
+	// 	Some(_) => {
+	// 		// set the contens of the code window to the selected file
+	// 		match &app.opened_hook {
+	// 			Some(s) => app.code = String::from_utf8_lossy(&fs::read(&s).unwrap()).into(),
+	// 			None => (),
+	// 		}
+	// 	},
+	// 	None => (),
+	// }
 
 	let mut layouter = |ui: &egui::Ui, code: &str, wrap_width: f32| {
 		let mut layout_job = egui_extras::syntax_highlighting::highlight(
@@ -453,71 +465,7 @@ fn code_editer(app: &mut TemplateApp, ui: &mut Ui) {
 	});
 }
 
-	// opened_file: Option<PathBuf>,
-	// open_file_dialog: Option<FileDialog>,
-
-fn file_picker(app: &mut TemplateApp, ui: &mut Ui) {
-	// todo add new hooks for goups button
-	// icons
-	let folder_icon = Image::new(include_image!("../assets/folder.svg")).fit_to_original_size(1.05);
-	let save_icon = Image::new(include_image!("../assets/save.svg"));
-
-	ui.horizontal(|ui| {
-		if (ui.add(egui::Button::image_and_text(folder_icon, "Open Hooks"))).clicked() {
-			// Show only files with the extension "sh".
-			let filter = Box::new({
-				let ext = Some(OsStr::new("sh"));
-				move |path: &Path| -> bool { path.extension() == ext }
-			});
-
-			let mut dialog = FileDialog::open_file(
-				// get hooks path
-				match tuckr::dotfiles::get_dotfiles_path(&mut "".into()) {
-					Ok(p) => Some(p.join("Hooks")),
-					Err(e) => return app.output.push_str(&e.to_string()),
-				}).show_files_filter(filter);
-
-			dialog.open();
-			app.open_file_dialog = Some(dialog);
-		}
-
-		if (ui.add(egui::Button::image(save_icon))).clicked() {
-			let save = fs::write(
-				match &app.opened_hook {
-						Some(p) => p,
-						None => return,
-					},
-				&app.code
-			);
-			match save {
-				Ok(()) => app.output = "saved".to_string(),
-				Err(e) => app.output = e.to_string(),
-			}
-		}
-	});
-
-	if let Some(dialog) = &mut app.open_file_dialog {
-		if dialog.show(ui.ctx(), ui.visuals()).selected() {
-			if let Some(file) = dialog.path() {
-			app.opened_hook = Some(file.to_path_buf());
-			}
-		}
-	}
-}
-
 fn group_select(app: &mut TemplateApp, ui: &mut Ui) {
-	// egui::RadioButton::::from_label("Take your pick")
-	// .selected_text(format!("{}", &app.found_groups[app.groups]))
-	// .show_ui(ui, |ui| {
-		
-	// 	for i in 0..app.found_groups.len() {
-	// 		let value = ui.selectable_value(&mut &app.found_groups[i], &app.found_groups[app.groups], &app.found_groups[i]);
-	// 		if (value.clicked()) {
-	// 			app.groups = i;
-	// 		}
-	// 	}
-	// });
-
 	ui.add(MultiSelect::new(
 		"test_multiselect",
 		&mut app.groups.as_mut().unwrap().clone(),
@@ -525,6 +473,6 @@ fn group_select(app: &mut TemplateApp, ui: &mut Ui) {
 		app.found_groups.as_ref().unwrap(),
 		|ui, _text| ui.selectable_label(false, _text),
 		&255,
-		&mut false,
+		"Choose one or more groups",
 	));
 }

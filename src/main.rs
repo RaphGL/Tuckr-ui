@@ -3,6 +3,7 @@
 mod app;
 mod cmd;
 mod groups;
+mod filepicker;
 
 // When compiling natively:
 fn main() -> eframe::Result {

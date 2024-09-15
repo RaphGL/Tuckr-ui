@@ -1,0 +1,81 @@
+use std::{fs, path::PathBuf};
+use eframe::egui;
+use egui::{include_image, Image, Ui};
+use crate::app::TemplateApp;
+
+
+pub fn file_picker(app: &mut TemplateApp, ui: &mut Ui) {
+	ui.style_mut().spacing.item_spacing = egui::vec2(15.0, 15.0);
+
+	// icons
+	let folder_icon = Image::new(include_image!("../assets/folder.svg")).fit_to_original_size(1.05);
+
+	let hooks_dir = match tuckr::dotfiles::get_dotfiles_path(&mut "".into()) {
+		Ok(p) => Some(p.join("Hooks")),
+		Err(e) => return app.output.push_str(&e.to_string()),
+	};
+
+	if ui.add(egui::Button::image_and_text(folder_icon, "Open file…")).clicked() {
+		if let Some(path) = rfd::FileDialog::new()
+		.add_filter("shell scripts", &["sh"])
+		.set_directory(hooks_dir.unwrap_or(PathBuf::from("/"))).pick_file() {
+			app.opened_hook = Some(path.display().to_string());
+			// set the contens of the code window to the selected file
+			match &app.opened_hook {
+				Some(s) => app.code = String::from_utf8_lossy(&fs::read(&s).unwrap()).into(),
+				None => (),
+			}
+		}
+	}
+
+	if let Some(opened_hook) = &app.opened_hook {
+		ui.horizontal(|ui| {
+			ui.label("Picked file:");
+			ui.label(opened_hook);
+		});
+	}
+
+	preview_files_being_dropped(app, ui.ctx());
+
+	// Collect dropped files:
+	ui.ctx().input(|i| {
+		if !i.raw.dropped_files.is_empty() {
+			app.dropped_files.clone_from(&i.raw.dropped_files);
+		}
+	});
+}
+
+/// Preview hovering files:
+fn preview_files_being_dropped(app: &mut TemplateApp, ctx: &egui::Context) {
+	use egui::{Align2, Color32, Id, LayerId, Order, TextStyle};
+	use std::fmt::Write as _;
+
+	if !ctx.input(|i| i.raw.hovered_files.is_empty()) {
+		let text = ctx.input(|i| {
+			let mut text = "Dropping files:\n".to_owned();
+			for file in &i.raw.hovered_files {
+				if let Some(path) = &file.path {
+					write!(text, "\n{}", path.display()).ok();
+				} else if !file.mime.is_empty() {
+					write!(text, "\n{}", file.mime).ok();
+				} else {
+					text += "\n???";
+				}
+			}
+			text
+		});
+
+		let painter =
+			ctx.layer_painter(LayerId::new(Order::Foreground, Id::new(format!("file_drop_target: {}", app.check_count))));
+
+		let screen_rect = ctx.screen_rect();
+		painter.rect_filled(screen_rect, 0.0, Color32::from_black_alpha(192));
+		painter.text(
+			screen_rect.center(),
+			Align2::CENTER_CENTER,
+			text,
+			TextStyle::Heading.resolve(&ctx.style()),
+			Color32::WHITE,
+		);
+	}
+}

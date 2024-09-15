@@ -20,7 +20,6 @@ log = "0.4"
 
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }
-egui_file = { version = "0.18", path = "src/filepicker" }
 egui-multiselect = { version = "0.2.0", path = "src/multiselect" }
 
 # Optimize all dependencies even in debug builds:
