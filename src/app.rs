@@ -430,17 +430,6 @@ fn code_editer(app: &mut TemplateApp, ui: &mut Ui) {
 	egui_extras::syntax_highlighting::CodeTheme::from_style(ui.style()); //from_memory(ui.ctx());
 	// todo patch egui_extras to use tmTheme file
 
-	// match &app.opened_hook {
-	// 	Some(_) => {
-	// 		// set the contens of the code window to the selected file
-	// 		match &app.opened_hook {
-	// 			Some(s) => app.code = String::from_utf8_lossy(&fs::read(&s).unwrap()).into(),
-	// 			None => (),
-	// 		}
-	// 	},
-	// 	None => (),
-	// }
-
 	let mut layouter = |ui: &egui::Ui, code: &str, wrap_width: f32| {
 		let mut layout_job = egui_extras::syntax_highlighting::highlight(
 			ui.ctx(),
