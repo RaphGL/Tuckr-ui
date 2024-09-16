@@ -108,7 +108,7 @@ jobs:
         submodules: recursive
 
     - name: Rust/Cargo Cache
-        uses: Swatinem/rust-cache@v2
+      uses: Swatinem/rust-cache@v2
 
     - name: Install build dependencies - Rustup
       run: |
