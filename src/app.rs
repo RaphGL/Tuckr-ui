@@ -297,9 +297,7 @@ impl eframe::App for TemplateApp {
 		}
 		self.check_count += 1;
 
-		egui::CentralPanel::default().frame(egui::Frame::default()
-				.fill(PANEL_FILL).inner_margin(egui::Margin::symmetric(12.0, 12.0)),
-		)
+		egui::CentralPanel::default().frame(egui::Frame::default().fill(PANEL_FILL).inner_margin(egui::Margin::symmetric(12.0, 12.0)))
 			.show(ctx, |ui| {
 				// The central panel the region left after adding TopPanel's and SidePanel's
 				ui.heading("Tuckr UI");
@@ -308,8 +306,6 @@ impl eframe::App for TemplateApp {
 				ui.separator();
 
 				ui.vertical_centered(|ui| {
-					ui.label(&self.check_count.to_string());
-
 					ui.horizontal(|ui| {
 						egui::ComboBox::from_id_source(4)
 							.selected_text(format!("{}", self.page))
@@ -437,6 +433,8 @@ impl eframe::App for TemplateApp {
 
 					ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
 						egui::warn_if_debug_build(ui);
+						#[cfg(debug_assertions)]
+						ui.label(&self.check_count.to_string());
 					});
 				});
 			});
