@@ -212,7 +212,7 @@ fn fonts() -> egui::FontDefinitions {
 }
 
 fn format_vec_str(vstr: &mut Vec<String>) -> String {
-	let mut formated_str = String::with_capacity(vstr.len() * 9);
+	let mut formated_str = String::with_capacity(vstr.len() * 10);
 	formated_str.push_str(&vstr.remove(0));
 	for str in vstr {
 		formated_str.push_str(", ");
@@ -256,7 +256,7 @@ impl Default for TemplateApp {
 		Self {
 			force: false,
 			adopt: false,
-			check_count: 9970,
+			check_count: 9975,
 			page: Page::default(),
 			groups: None,
 			exclude: None,
@@ -392,13 +392,14 @@ impl eframe::App for TemplateApp {
 										Err(e) => self.output = e.to_string(),
 									}
 								}
+								ui.add_space(3.0);
 
 								let hooks_dir = match tuckr::dotfiles::get_dotfiles_path(&mut "".into()) {
 									Ok(p) => Some(p.join("Hooks")),
 									Err(e) => return self.output.push_str(&e.to_string()),
 								};
 								hook_file_picker(self, ui, hooks_dir.clone());
-								ui.add_space(10.0);
+								ui.add_space(3.0);
 								new_hook(self, ui, hooks_dir, new_icon);
 							});
 
@@ -501,6 +502,7 @@ fn new_hook(app: &mut TemplateApp, ui: &mut Ui, hooks_dir: Option<PathBuf>, new_
 			.set_directory(&hooks_dir.unwrap_or_default())
 			.save_file();
 	}
+	ui.add_space(3.0);
 
 	egui::ComboBox::from_label("stage")
 		.selected_text(app.new_hook_type.to_string())

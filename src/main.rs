@@ -5,15 +5,14 @@ mod cmd;
 mod filepicker;
 mod groups;
 
-// When compiling natively:
+// Only compile natively:
 fn main() -> eframe::Result {
 	let native_options = eframe::NativeOptions {
 		viewport: egui::ViewportBuilder::default()
 			.with_transparent(true)
-			.with_inner_size([600.0, 540.0])
-			.with_min_inner_size([590.0, 520.0])
+			.with_inner_size([700.0, 540.0])
+			.with_min_inner_size([685.0, 530.0])
 			.with_icon(
-				// Icon
 				eframe::icon_data::from_png_bytes(&include_bytes!("../assets/icon-256.png")[..])
 					.expect("Failed to load icon"),
 			),
