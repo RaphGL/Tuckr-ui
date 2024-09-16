@@ -2,10 +2,10 @@
 name = "tuckr-ui"
 version = "1.0.0"
 authors = ["TimTheBig"]
+edition = "2021"
 description = "A ui for Tuckr a stow like tool for dotfile management"
 license = "GPL-v3"
 license-file = "LICENSE"
-edition = "2021"
 
 [package.metadata.bundle]
 identifier = "org.timthebig.tuckrui"
@@ -13,6 +13,10 @@ icon = ["assets/256x256.png", "assets/512x512.png", "assets/512x512@2x.png", "as
 copyright = "Copyright (c) TimTheBig 2024. All rights reserved."
 category = "Utility"
 linux_use_terminal = false
+
+[package.metadata.deb]
+copyright = "Copyright (c) TimTheBig 2024. All rights reserved."
+section = "Utility"
 
 [package.metadata.docs.rs]
 all-features = true
