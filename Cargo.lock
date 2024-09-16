@@ -3650,7 +3650,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tuckr_ui"
+name = "tuckr-ui"
 version = "1.0.0"
 dependencies = [
  "eframe",

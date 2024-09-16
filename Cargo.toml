@@ -9,7 +9,7 @@ edition = "2021"
 identifier = "org.timthebig.tuckrui"
 icon = ["assets/icon-256.png", "assets/icon-1024.png", "assets/icon_ios_touch_192.png"]
 copyright = "Copyright (c) TimTheBig 2024. All rights reserved."
-category = "Utilitie"
+category = "Utility"
 linux_use_terminal = false
 
 [package.metadata.docs.rs]
