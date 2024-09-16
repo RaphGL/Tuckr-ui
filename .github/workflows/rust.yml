@@ -2,6 +2,9 @@ on: [push, pull_request, workflow_dispatch]
 
 name: CI
 
+env:
+  CACHE_ON_FAILURE: true
+
 jobs:
   check:
     name: Check
@@ -117,7 +120,7 @@ jobs:
         cargo build --verbose --release --target=${{ matrix.TARGET }}
 
     - name: Rename
-      run: ls -a -r 2 target && cp target/${{ matrix.TARGET }}/release/Tuckr-ui tuckr-ui-${{ matrix.TARGET }}
+      run: ls -a target/${{ matrix.TARGET }}/release && cp target/${{ matrix.TARGET }}/release/tuckr-ui tuckr-ui-${{ matrix.TARGET }}
 
     - uses: actions/upload-artifact@master
       with:

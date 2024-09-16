@@ -1,5 +1,5 @@
 [package]
-name = "tuckr_ui"
+name = "tuckr-ui"
 version = "1.0.0"
 authors = ["TimTheBig"]
 edition = "2021"
