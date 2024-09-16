@@ -120,7 +120,7 @@ jobs:
         cargo build --verbose --release --target=${{ matrix.TARGET }}
 
     - name: Rename
-      run: ls -a target/${{ matrix.TARGET }}/release && cp target/${{ matrix.TARGET }}/release/tuckr-ui tuckr-ui-${{ matrix.TARGET }}
+      run: rustup update && cp target/${{ matrix.TARGET }}/release/tuckr-ui tuckr-ui-${{ matrix.TARGET }}
 
     - uses: actions/upload-artifact@master
       with:
