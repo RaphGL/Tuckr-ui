@@ -2,8 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 mod app;
 mod cmd;
-mod groups;
 mod filepicker;
+mod groups;
 
 // When compiling natively:
 fn main() -> eframe::Result {
@@ -22,9 +22,9 @@ fn main() -> eframe::Result {
 	eframe::run_native(
 		"eframe template",
 		native_options,
-		Box::new(|cc|{
+		Box::new(|cc| {
 			// This gives us image support:
-            egui_extras::install_image_loaders(&cc.egui_ctx);
+			egui_extras::install_image_loaders(&cc.egui_ctx);
 			Ok(Box::new(app::TemplateApp::new(cc)))
 		}),
 	)

@@ -2,8 +2,8 @@
 use crate::cmd::run;
 /// dnd file pickers
 use crate::filepicker::{hook_file_picker, push_file_picker};
+use egui::{include_image, Image, KeyboardShortcut, Modifiers};
 use egui::{Button, Color32, DroppedFile, Ui};
-use egui::{Image, Modifiers, KeyboardShortcut, include_image};
 use egui_multiselect::MultiSelect;
 use std::fmt::Display;
 use std::fs;
@@ -17,7 +17,7 @@ use tuckr::Cli;
 pub enum HookType {
 	Pre,
 	#[default]
-	Post
+	Post,
 }
 
 impl Display for HookType {
@@ -78,9 +78,9 @@ impl Page {
 			Page::Push(f) => Ok(Cli::Push {
 				group: groups[0].clone(),
 				files: match f {
-						Some(ps) => ps,
-						None => return Err("select a path".into()),
-					},
+					Some(ps) => ps,
+					None => return Err("select a path".into()),
+				},
 			}),
 			Page::Pop => Ok(Cli::Pop { groups }),
 			Page::Init => Ok(Cli::Init),
@@ -203,14 +203,16 @@ fn fonts() -> egui::FontDefinitions {
 		"FiraCode".to_string(),
 		egui::FontData::from_static(include_bytes!("../assets/FiraCode-Regular.ttf")),
 	);
-	font.families.get_mut(&egui::FontFamily::Proportional).unwrap()
-	.insert(0, "FiraCode".to_string());
+	font.families
+		.get_mut(&egui::FontFamily::Proportional)
+		.unwrap()
+		.insert(0, "FiraCode".to_string());
 
 	font
 }
 
 fn format_vec_str(vstr: &mut Vec<String>) -> String {
-	let mut formated_str  = String::with_capacity(vstr.len() * 9);
+	let mut formated_str = String::with_capacity(vstr.len() * 9);
 	formated_str.push_str(&vstr.remove(0));
 	for str in vstr {
 		formated_str.push_str(", ");
@@ -265,7 +267,7 @@ impl Default for TemplateApp {
 			opened_hook: None,
 			dropped_files: Vec::new(),
 			new_hook_type: HookType::default(),
-    		push_files: None,
+			push_files: None,
 		}
 	}
 }
@@ -295,9 +297,9 @@ impl eframe::App for TemplateApp {
 		}
 		self.check_count += 1;
 
-		egui::CentralPanel::default().frame(
-			egui::Frame::default().fill(PANEL_FILL)
-			.inner_margin(egui::Margin::symmetric(12.0, 12.0)))
+		egui::CentralPanel::default().frame(egui::Frame::default()
+				.fill(PANEL_FILL).inner_margin(egui::Margin::symmetric(12.0, 12.0)),
+		)
 			.show(ctx, |ui| {
 				// The central panel the region left after adding TopPanel's and SidePanel's
 				ui.heading("Tuckr UI");
@@ -321,11 +323,7 @@ impl eframe::App for TemplateApp {
 								ui.selectable_value(&mut self.page, Page::Help, "Help");
 								ui.selectable_value(&mut self.page, Page::Init, "Init");
 								ui.selectable_value(&mut self.page, Page::Pop, "Pop");
-								ui.selectable_value(
-									&mut self.page,
-									Page::Push(self.push_files.clone()),
-									"Push",
-								);
+								ui.selectable_value(&mut self.page, Page::Push(self.push_files.clone()), "Push");
 								ui.selectable_value(&mut self.page, Page::Rm(self.exclude.clone()), "Rm");
 								ui.selectable_value(
 									&mut self.page,
@@ -343,8 +341,15 @@ impl eframe::App for TemplateApp {
 						let refresh_icon = Image::new(include_image!("../assets/refresh.svg"));
 
 						// check if refresh button or CTRL+R are presed
-						if ui.input_mut(|i| egui::InputState::consume_shortcut(i, &KeyboardShortcut { modifiers: Modifiers::COMMAND, logical_key: egui::Key::R }))
-						|| ui.add(Button::image(refresh_icon)).clicked() {
+						if ui.input_mut(|i| {
+							egui::InputState::consume_shortcut(i,
+								&KeyboardShortcut {
+									modifiers: Modifiers::COMMAND,
+									logical_key: egui::Key::R,
+								},
+							)
+						}) || ui.add(Button::image(refresh_icon)).clicked()
+						{
 							self.check_count = 0;
 							groups_handle = Some(thread::spawn(|| {
 								let mut output = "".to_string();
@@ -375,49 +380,55 @@ impl eframe::App for TemplateApp {
 					// if the page is hooks list groups and hook files then open it in a editer
 					match self.page {
 						Page::Hooks => {
-						let save_icon = Image::new(include_image!("../assets/save.svg")).fit_to_original_size(0.23);
-						let new_icon = Image::new(include_image!("../assets/new.svg")).fit_to_original_size(0.23);
-						ui.horizontal(|ui| {
-							if (ui.add(Button::image(save_icon))).clicked() {
-								let save = fs::write(
-									match &self.opened_hook {
+							let save_icon = Image::new(include_image!("../assets/save.svg")).fit_to_original_size(0.23);
+							let new_icon = Image::new(include_image!("../assets/new.svg")).fit_to_original_size(0.23);
+							ui.horizontal(|ui| {
+								if (ui.add(Button::image(save_icon))).clicked() {
+									let save = fs::write(
+										match &self.opened_hook {
 											Some(p) => p,
 											None => return,
 										},
-									&self.code
-								);
-								match save {
-									Ok(()) => self.output = "saved".to_string(),
-									Err(e) => self.output = e.to_string(),
+										&self.code,
+									);
+									match save {
+										Ok(()) => self.output = "saved".to_string(),
+										Err(e) => self.output = e.to_string(),
+									}
 								}
-							}
 
-							let hooks_dir = match tuckr::dotfiles::get_dotfiles_path(&mut "".into()) {
-								Ok(p) => Some(p.join("Hooks")),
-								Err(e) => return self.output.push_str(&e.to_string()),
-							};
-							hook_file_picker(self, ui, hooks_dir.clone());
-							ui.add_space(10.0);
-							new_hook(self, ui, hooks_dir, new_icon);
-						});
+								let hooks_dir = match tuckr::dotfiles::get_dotfiles_path(&mut "".into()) {
+									Ok(p) => Some(p.join("Hooks")),
+									Err(e) => return self.output.push_str(&e.to_string()),
+								};
+								hook_file_picker(self, ui, hooks_dir.clone());
+								ui.add_space(10.0);
+								new_hook(self, ui, hooks_dir, new_icon);
+							});
 
-						code_editer(self, ui);
+							code_editer(self, ui);
 						}
-						Page::Push(_) => {
-							push_file_picker(self, ui)
-						}
-						_ => ()
+						Page::Push(_) => push_file_picker(self, ui),
+						_ => (),
 					}
 
 					// groups
-					ui.label(format_vec_str(&mut self.found_groups.clone().unwrap_or(vec!["".into()])));
+					ui.label(format_vec_str(
+						&mut self.found_groups.clone().unwrap_or(vec!["".into()]),
+					));
 
 					if self.page != Page::Hooks {
 						if ui.button("Exacute").clicked() {
-							match self.page.clone()
-							.into_cli(self.groups.clone().unwrap_or(vec![r"\*".into()])) {
-								Ok(cli) => { self.output = run(cli).0 },
-								Err(h) => { self.output = h; self.label = "select a group".into(); },
+							match self
+								.page
+								.clone()
+								.into_cli(self.groups.clone().unwrap_or(vec![r"\*".into()]))
+							{
+								Ok(cli) => self.output = run(cli).0,
+								Err(h) => {
+									self.output = h;
+									self.label = "select a group".into();
+								}
 							};
 						}
 					}
@@ -431,28 +442,24 @@ impl eframe::App for TemplateApp {
 			});
 
 		match groups_handle {
-			Some(groups) => if let Ok(g) = groups.join() {
+			Some(groups) => {
+				if let Ok(g) = groups.join() {
 					self.output.push_str(&g.1);
 					self.found_groups = g.0.ok();
 					self.groups = self.found_groups.clone()
-				},
+				}
+			}
 			None => (),
 		}
 	}
 }
 
 fn code_editer(app: &mut TemplateApp, ui: &mut Ui) {
-	let theme =
-	egui_extras::syntax_highlighting::CodeTheme::from_style(ui.style()); //from_memory(ui.ctx());
-	// todo patch egui_extras to use tmTheme file
+	let theme = egui_extras::syntax_highlighting::CodeTheme::from_style(ui.style());
+																				 // todo patch egui_extras to use tmTheme file
 
 	let mut layouter = |ui: &egui::Ui, code: &str, wrap_width: f32| {
-		let mut layout_job = egui_extras::syntax_highlighting::highlight(
-			ui.ctx(),
-			&theme,
-			code,
-			"bash",
-		);
+		let mut layout_job = egui_extras::syntax_highlighting::highlight(ui.ctx(), &theme, code, "bash");
 		layout_job.wrap.max_width = wrap_width;
 		ui.fonts(|f| f.layout_job(layout_job))
 	};
@@ -478,9 +485,9 @@ fn group_select(app: &mut TemplateApp, ui: &mut Ui) {
 		app.found_groups.as_ref().unwrap(),
 		|ui, _text| ui.selectable_label(false, _text),
 		match app.page {
-					Page::Push(_) => &1,
-					_ => &255,
-				},
+			Page::Push(_) => &1,
+			_ => &255,
+		},
 		"Choose one or more groups",
 	));
 }
@@ -491,17 +498,18 @@ fn new_hook(app: &mut TemplateApp, ui: &mut Ui, hooks_dir: Option<PathBuf>, new_
 		file_name.push_str(".sh");
 
 		rfd::FileDialog::new()
-		.add_filter("shell scripts", &["sh"])
-		.set_file_name(file_name)
-		.set_directory(&hooks_dir.unwrap_or_default()).save_file();
+			.add_filter("shell scripts", &["sh"])
+			.set_file_name(file_name)
+			.set_directory(&hooks_dir.unwrap_or_default())
+			.save_file();
 	}
 
 	egui::ComboBox::from_label("stage")
-	.selected_text(app.new_hook_type.to_string())
-	.show_ui(ui, |ui| {
-		ui.style_mut().spacing.item_spacing = egui::vec2(5.0, 5.0);
-		ui.selectable_value(&mut app.new_hook_type, HookType::Pre, "Pre");
-		ui.selectable_value(&mut app.new_hook_type, HookType::Post,"Post");
-		ui.style_mut().spacing.item_spacing = egui::vec2(15.0, 15.0);
-	});
+		.selected_text(app.new_hook_type.to_string())
+		.show_ui(ui, |ui| {
+			ui.style_mut().spacing.item_spacing = egui::vec2(5.0, 5.0);
+			ui.selectable_value(&mut app.new_hook_type, HookType::Pre, "Pre");
+			ui.selectable_value(&mut app.new_hook_type, HookType::Post, "Post");
+			ui.style_mut().spacing.item_spacing = egui::vec2(15.0, 15.0);
+		});
 }

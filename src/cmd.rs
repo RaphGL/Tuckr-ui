@@ -33,10 +33,16 @@ pub use symlinks::status_cmd;
 pub fn run(cli: Cli) -> (String, std::process::ExitCode) {
 	match cli {
 		Cli::Set {
-			groups, exclude, force, adopt,
+			groups,
+			exclude,
+			force,
+			adopt,
 		} => hooks::set_cmd(&groups, &exclude, force, adopt),
 		Cli::Add {
-			groups, exclude, force, adopt,
+			groups,
+			exclude,
+			force,
+			adopt,
 		} => symlinks::add_cmd(&groups, &exclude, force, adopt),
 		Cli::Rm { groups, exclude } => symlinks::remove_cmd(&groups, &exclude),
 		Cli::Status { groups } => symlinks::status_cmd(groups),
