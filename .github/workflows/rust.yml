@@ -117,7 +117,7 @@ jobs:
         cargo build --verbose --release --target=${{ matrix.TARGET }}
 
     - name: Rename
-      run: cp target/${{ matrix.TARGET }}/release/tuckr-ui tuckr-ui-${{ matrix.TARGET }}
+      run: cp target/release/tuckr-ui tuckr-ui-${{ matrix.TARGET }}
 
     - uses: actions/upload-artifact@master
       with:
