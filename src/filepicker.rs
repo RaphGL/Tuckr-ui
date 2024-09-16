@@ -14,10 +14,7 @@ pub fn push_file_picker(app: &mut TemplateApp, ui: &mut Ui) {
 		if let Some(path) = rfd::FileDialog::new().pick_files() {
 			app.push_files = Some(
 				path.iter()
-				.filter_map(|p| match p.to_str() {
-					Some(p) => Some(p.to_string()),
-					None => None,
-				})
+				.filter_map(|p| p.to_str().map(|p| p.to_string()))
 				.collect()
 			);
 			app.page = Page::Push(app.push_files.take())

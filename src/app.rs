@@ -431,14 +431,11 @@ impl eframe::App for TemplateApp {
 			});
 
 		match groups_handle {
-			Some(groups) => match groups.join() {
-				Ok(g) => {
+			Some(groups) => if let Ok(g) = groups.join() {
 					self.output.push_str(&g.1);
 					self.found_groups = g.0.ok();
 					self.groups = self.found_groups.clone()
 				},
-				Err(_) => (),
-			},
 			None => (),
 		}
 	}
@@ -453,7 +450,7 @@ fn code_editer(app: &mut TemplateApp, ui: &mut Ui) {
 		let mut layout_job = egui_extras::syntax_highlighting::highlight(
 			ui.ctx(),
 			&theme,
-			&code,
+			code,
 			"bash",
 		);
 		layout_job.wrap.max_width = wrap_width;
@@ -477,7 +474,7 @@ fn group_select(app: &mut TemplateApp, ui: &mut Ui) {
 	ui.add(MultiSelect::new(
 		"test_multiselect",
 		&mut app.groups.as_mut().unwrap().clone(),
-		&mut app.groups.as_mut().unwrap(),
+		app.groups.as_mut().unwrap(),
 		app.found_groups.as_ref().unwrap(),
 		|ui, _text| ui.selectable_label(false, _text),
 		match app.page {

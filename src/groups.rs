@@ -10,7 +10,7 @@ pub fn load_groups(output: &mut String) -> Result<Vec<String>, ReturnCode> {
         Ok(path) => path,
         Err(e) => {
             eprintln!("{e}");
-            return Err(ReturnCode::NoSetupFolder.into());
+            return Err(ReturnCode::NoSetupFolder);
         }
     }
     .join("Configs");
@@ -28,22 +28,5 @@ pub fn load_groups(output: &mut String) -> Result<Vec<String>, ReturnCode> {
         })
         .collect();
 
-	// for group in &groups {
-	// 	let dotfile_path = dotfiles_dir.join(group).join(&basepath);
-
-	// 	if !dotfile_path.exists() {
-	// 		continue;
-	// 	}
-
-	// 	let dotfile = match dotfiles::Dotfile::try_from(dotfile_path) {
-	// 		Ok(dotfile) => dotfile,
-	// 		Err(err) => {
-	// 			eprintln!("{err}");
-	// 			continue;
-	// 		}
-	// 	};
-
-	// 	println!("{}", dotfile.group_name);
-	// }
 	Ok(groups)
 }
