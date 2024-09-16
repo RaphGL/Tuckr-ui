@@ -117,20 +117,20 @@ jobs:
         cargo build --verbose --release --target=${{ matrix.TARGET }}
 
     - name: Rename
-      run: cp target/release/tuckr-ui tuckr-ui-${{ matrix.TARGET }}${{ matrix.EXTENSION }}
+      run: cp target/${{ matrix.TARGET }}/release/tuckr-ui tuckr-ui-${{ matrix.TARGET }}
 
     - uses: actions/upload-artifact@master
       with:
-        name: tuckr-ui-${{ matrix.TARGET }}${{ matrix.EXTENSION }}
-        path: tuckr-ui-${{ matrix.TARGET }}${{ matrix.EXTENSION }}
+        name: tuckr-ui-${{ matrix.TARGET }}
+        path: tuckr-ui-${{ matrix.TARGET }}
 
     - uses: svenstaro/upload-release-action@v2
       name: Upload binaries to release
       if: ${{ github.event_name == 'push' }}
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: tuckr-ui-${{ matrix.TARGET }}${{ matrix.EXTENSION }}
-        asset_name: tuckr-ui-${{ matrix.TARGET }}${{ matrix.EXTENSION }}
+        file: tuckr-ui-${{ matrix.TARGET }}
+        asset_name: tuckr-ui-${{ matrix.TARGET }}
         tag: ${{ github.ref }}
         prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
         overwrite: true
