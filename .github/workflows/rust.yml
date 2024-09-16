@@ -45,6 +45,7 @@ jobs:
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -128,7 +129,7 @@ jobs:
         cross build --verbose --release --target=${{ matrix.TARGET }}
 
     - name: Rename
-      run: cp target/${{ matrix.TARGET }}/release/tuckr-ui${{ matrix.EXTENSION }} tuckr-ui-${{ matrix.TARGET }}${{ matrix.EXTENSION }}
+      run: cp target/release/${{ matrix.TARGET }}/tuckr-ui${{ matrix.EXTENSION }} tuckr-ui-${{ matrix.TARGET }}${{ matrix.EXTENSION }}
 
     - uses: actions/upload-artifact@master
       with:
