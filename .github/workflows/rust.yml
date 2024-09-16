@@ -105,7 +105,7 @@ jobs:
         echo "${{ matrix.TARGET }}"
         if [[ "$OSTYPE" == "linux-gnu"* ]]; then
           sudo apt install build-essential gcc -y
-          apt-get update --fix-missing
+          sudo apt-get update --fix-missing
         fi
 
     - uses: actions/checkout@master
