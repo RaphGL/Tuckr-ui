@@ -101,7 +101,11 @@ jobs:
 
     steps:
     - name: Building ${{ matrix.TARGET }}
-      run: echo "${{ matrix.TARGET }}"
+      run: |
+        echo "${{ matrix.TARGET }}"
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+          sudo apt install build-essential -y
+        fi
 
     - uses: actions/checkout@master
       with:
