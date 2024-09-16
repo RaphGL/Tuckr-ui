@@ -1,6 +1,6 @@
 [package]
 name = "tuckr_ui"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["TimTheBig"]
 edition = "2021"
 
@@ -9,13 +9,13 @@ all-features = true
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-tuckr = { path = "../Tuckr" }
+tuckr = { git = "https://github.com/TimTheBig/Tuckr.git" }
 thiserror = "1"
 
 egui = "0.28"
 egui_extras = { version = "0.28", features = ["svg", "syntect"] }
 eframe = { version = "0.28", default-features = false, features = ["accesskit", "default_fonts", "persistence", "wayland", "wgpu"] }
-rfd = "0.13"
+rfd = { version = "0.14", features = ["tokio", "xdg-portal"], default-features = false }
 log = "0.4"
 
 # You only need serde if you want app persistence:

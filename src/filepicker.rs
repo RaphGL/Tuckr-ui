@@ -1,19 +1,51 @@
 use std::{fs, path::PathBuf};
 use eframe::egui;
-use egui::{include_image, Image, Ui};
-use crate::app::TemplateApp;
+use egui::{Image, Ui};
+use crate::app::{TemplateApp, Page, FOLDER_IMAGE};
 
 
-pub fn file_picker(app: &mut TemplateApp, ui: &mut Ui) {
+pub fn push_file_picker(app: &mut TemplateApp, ui: &mut Ui) {
 	ui.style_mut().spacing.item_spacing = egui::vec2(15.0, 15.0);
 
 	// icons
-	let folder_icon = Image::new(include_image!("../assets/folder.svg")).fit_to_original_size(1.05);
+	let folder_icon = Image::new(FOLDER_IMAGE).fit_to_original_size(1.05);
 
-	let hooks_dir = match tuckr::dotfiles::get_dotfiles_path(&mut "".into()) {
-		Ok(p) => Some(p.join("Hooks")),
-		Err(e) => return app.output.push_str(&e.to_string()),
-	};
+	if ui.add(egui::Button::image_and_text(folder_icon, "Open file…")).clicked() {
+		if let Some(path) = rfd::FileDialog::new().pick_files() {
+			app.push_files = Some(
+				path.iter()
+				.filter_map(|p| match p.to_str() {
+					Some(p) => Some(p.to_string()),
+					None => None,
+				})
+				.collect()
+			);
+			app.page = Page::Push(app.push_files.take())
+		}
+	}
+
+	if let Some(opened_hook) = &app.opened_hook {
+		ui.horizontal(|ui| {
+			ui.label("Picked file:");
+			ui.label(opened_hook);
+		});
+	}
+
+	preview_files_being_dropped(app, ui.ctx());
+
+	// Collect dropped files:
+	ui.ctx().input(|i| {
+		if !i.raw.dropped_files.is_empty() {
+			app.dropped_files.clone_from(&i.raw.dropped_files);
+		}
+	});
+}
+
+pub fn hook_file_picker(app: &mut TemplateApp, ui: &mut Ui, hooks_dir: Option<PathBuf>) {
+	ui.style_mut().spacing.item_spacing = egui::vec2(15.0, 15.0);
+
+	// icons
+	let folder_icon = Image::new(FOLDER_IMAGE).fit_to_original_size(1.05);
 
 	if ui.add(egui::Button::image_and_text(folder_icon, "Open file…")).clicked() {
 		if let Some(path) = rfd::FileDialog::new()

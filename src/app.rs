@@ -1,29 +1,33 @@
+/// exacute a tuckr command
 use crate::cmd::run;
-use egui::{Color32, DroppedFile, Ui};
+/// dnd file pickers
+use crate::filepicker::{hook_file_picker, push_file_picker};
+use egui::{Button, Color32, DroppedFile, Ui};
 use egui::{Image, Modifiers, KeyboardShortcut, include_image};
 use egui_multiselect::MultiSelect;
 use std::fmt::Display;
-use std::{fs, io};
+use std::fs;
+use std::path::PathBuf;
 use std::thread::{self, JoinHandle};
 use tuckr::dotfiles::ReturnCode;
 /// the tuckr state
 use tuckr::Cli;
 
-#[derive(thiserror::Error, Debug)]
-pub enum CmdError {
-	Help,
-	Io(#[from] io::Error),
+#[derive(Default, serde::Deserialize, serde::Serialize, PartialEq)]
+pub enum HookType {
+	Pre,
+	#[default]
+	Post
 }
 
-impl Display for CmdError {
+impl Display for HookType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
-			CmdError::Io(e) => write!(f, "Io Error: {}", e),
-			_ => write!(f, "See Help"),
+			HookType::Pre => write!(f, "Pre"),
+			HookType::Post => write!(f, "Post"),
 		}
 	}
 }
-// todo use new thred to check dotfiles
 
 /// enum for each page/command
 #[derive(Default, serde::Deserialize, serde::Serialize, PartialEq, Clone)]
@@ -40,7 +44,7 @@ pub enum Page {
 	/// (exclude, force, adopt)
 	Set(Option<Vec<String>>, bool, bool),
 	/// files
-	Push(Vec<String>),
+	Push(Option<Vec<String>>),
 	Pop,
 	Init,
 	/// create and edit hooks
@@ -73,7 +77,10 @@ impl Page {
 			}),
 			Page::Push(f) => Ok(Cli::Push {
 				group: groups[0].clone(),
-				files: f,
+				files: match f {
+						Some(ps) => ps,
+						None => return Err("select a path".into()),
+					},
 			}),
 			Page::Pop => Ok(Cli::Pop { groups }),
 			Page::Init => Ok(Cli::Init),
@@ -123,7 +130,7 @@ pub struct TemplateApp {
 	#[serde(skip)]
 	pub output: String,
 	/// The page with command data incoded
-	page: Page,
+	pub page: Page,
 	/// The last opened hook script
 	#[serde(skip)]
 	pub code: String,
@@ -132,10 +139,19 @@ pub struct TemplateApp {
 	pub opened_hook: Option<String>,
 	#[serde(skip)]
 	pub dropped_files: Vec<DroppedFile>,
+	/// if a new hook should be pre or post
+	new_hook_type: HookType,
+	/// Paths to files to push
+	#[serde(skip)]
+	pub push_files: Option<Vec<String>>,
 }
 
 // todo add code block for hooks with the egui syntax_highlighting feature
 
+// # consts
+// icons
+pub const FOLDER_IMAGE: egui::ImageSource<'_> = include_image!("../assets/folder.svg");
+// visuals
 const PANEL_FILL: Color32 = Color32::from_rgba_premultiplied(5, 18, 29, 247);
 const BUTTON_SIZE: f32 = 7.0;
 const ROUNDING: f32 = 5.5;
@@ -209,8 +225,6 @@ impl TemplateApp {
 		// This is also where we customize the look and feel of egui
 		cc.egui_ctx.set_visuals(visuals());
 		cc.egui_ctx.set_fonts(fonts());
-		// ! look the thing for blur
-		// cc.gl
 
 		cc.egui_ctx.style_mut(|style| {
 			for (text_style, font_id) in style.text_styles.iter_mut() {
@@ -250,6 +264,8 @@ impl Default for TemplateApp {
 			code: String::new(),
 			opened_hook: None,
 			dropped_files: Vec::new(),
+			new_hook_type: HookType::default(),
+    		push_files: None,
 		}
 	}
 }
@@ -296,6 +312,7 @@ impl eframe::App for TemplateApp {
 						egui::ComboBox::from_id_source(4)
 							.selected_text(format!("{}", self.page))
 							.show_ui(ui, |ui| {
+								ui.style_mut().spacing.item_spacing = egui::vec2(5.0, 5.0);
 								ui.selectable_value(
 									&mut self.page,
 									Page::Add(self.exclude.clone(), self.force, self.adopt),
@@ -306,7 +323,7 @@ impl eframe::App for TemplateApp {
 								ui.selectable_value(&mut self.page, Page::Pop, "Pop");
 								ui.selectable_value(
 									&mut self.page,
-									Page::Push(self.groups.clone().unwrap_or(vec![self.label.clone()])),
+									Page::Push(self.push_files.clone()),
 									"Push",
 								);
 								ui.selectable_value(&mut self.page, Page::Rm(self.exclude.clone()), "Rm");
@@ -316,7 +333,8 @@ impl eframe::App for TemplateApp {
 									"Set",
 								);
 								ui.selectable_value(&mut self.page, Page::Status, "Status");
-								ui.selectable_value(&mut self.page, Page::Hooks, "Hooks")
+								ui.selectable_value(&mut self.page, Page::Hooks, "Hooks");
+								ui.style_mut().spacing.item_spacing = egui::vec2(15.0, 15.0);
 							});
 
 						ui.add_space(10.0);
@@ -326,7 +344,7 @@ impl eframe::App for TemplateApp {
 
 						// check if refresh button or CTRL+R are presed
 						if ui.input_mut(|i| egui::InputState::consume_shortcut(i, &KeyboardShortcut { modifiers: Modifiers::COMMAND, logical_key: egui::Key::R }))
-						|| ui.add(egui::Button::image(refresh_icon)).clicked() {
+						|| ui.add(Button::image(refresh_icon)).clicked() {
 							self.check_count = 0;
 							groups_handle = Some(thread::spawn(|| {
 								let mut output = "".to_string();
@@ -355,10 +373,12 @@ impl eframe::App for TemplateApp {
 					});
 
 					// if the page is hooks list groups and hook files then open it in a editer
-					if self.page == Page::Hooks {
+					match self.page {
+						Page::Hooks => {
 						let save_icon = Image::new(include_image!("../assets/save.svg")).fit_to_original_size(0.23);
+						let new_icon = Image::new(include_image!("../assets/new.svg")).fit_to_original_size(0.23);
 						ui.horizontal(|ui| {
-							if (ui.add(egui::Button::image(save_icon))).clicked() {
+							if (ui.add(Button::image(save_icon))).clicked() {
 								let save = fs::write(
 									match &self.opened_hook {
 											Some(p) => p,
@@ -371,10 +391,22 @@ impl eframe::App for TemplateApp {
 									Err(e) => self.output = e.to_string(),
 								}
 							}
-							crate::filepicker::file_picker(self, ui);
+
+							let hooks_dir = match tuckr::dotfiles::get_dotfiles_path(&mut "".into()) {
+								Ok(p) => Some(p.join("Hooks")),
+								Err(e) => return self.output.push_str(&e.to_string()),
+							};
+							hook_file_picker(self, ui, hooks_dir.clone());
+							ui.add_space(10.0);
+							new_hook(self, ui, hooks_dir, new_icon);
 						});
 
 						code_editer(self, ui);
+						}
+						Page::Push(_) => {
+							push_file_picker(self, ui)
+						}
+						_ => ()
 					}
 
 					// groups
@@ -391,20 +423,7 @@ impl eframe::App for TemplateApp {
 					}
 
 					ui.label(&self.output);
-					// todo put in a popup then wight the ansouer to stdin
-					// 	print!("Are you sure you want to override conflicts? (N/y) ");
-					// } else if adopt {
-					// 	print!("Are you sure you want to adopt conflicts? (N/y) ");
-					// });
-					// todo same for from stow
-					// print!("Are you sure you want to convert your dotfiles to tuckr? (y/N)");
-					// todo cmd_push
-					// print!(
-					// 	"{} already exists. Do you want to override it? (y/N) ",
-					// 	target_file.to_str().unwrap()
-					// );
-					// todo pop_cmd
-					// print!("\nDo you want to proceed? (y/N) ");
+
 					ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
 						egui::warn_if_debug_build(ui);
 					});
@@ -461,7 +480,31 @@ fn group_select(app: &mut TemplateApp, ui: &mut Ui) {
 		&mut app.groups.as_mut().unwrap(),
 		app.found_groups.as_ref().unwrap(),
 		|ui, _text| ui.selectable_label(false, _text),
-		&255,
+		match app.page {
+					Page::Push(_) => &1,
+					_ => &255,
+				},
 		"Choose one or more groups",
 	));
+}
+
+fn new_hook(app: &mut TemplateApp, ui: &mut Ui, hooks_dir: Option<PathBuf>, new_icon: Image<'_>) {
+	if ui.add(Button::image_and_text(new_icon, "hook")).clicked() {
+		let mut file_name = app.new_hook_type.to_string().to_lowercase();
+		file_name.push_str(".sh");
+
+		rfd::FileDialog::new()
+		.add_filter("shell scripts", &["sh"])
+		.set_file_name(file_name)
+		.set_directory(&hooks_dir.unwrap_or_default()).save_file();
+	}
+
+	egui::ComboBox::from_label("stage")
+	.selected_text(app.new_hook_type.to_string())
+	.show_ui(ui, |ui| {
+		ui.style_mut().spacing.item_spacing = egui::vec2(5.0, 5.0);
+		ui.selectable_value(&mut app.new_hook_type, HookType::Pre, "Pre");
+		ui.selectable_value(&mut app.new_hook_type, HookType::Post,"Post");
+		ui.style_mut().spacing.item_spacing = egui::vec2(15.0, 15.0);
+	});
 }
