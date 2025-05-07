@@ -53,9 +53,8 @@ pub fn hook_file_picker(app: &mut TemplateApp, ui: &mut Ui, hooks_dir: Option<Pa
 		{
 			app.opened_hook = Some(path.display().to_string());
 			// set the contens of the code window to the selected file
-			match &app.opened_hook {
-				Some(s) => app.code = String::from_utf8_lossy(&fs::read(&s).unwrap()).into(),
-				None => (),
+			if let Some(s) = &app.opened_hook {
+				app.code = String::from_utf8_lossy(&fs::read(s).unwrap()).into()
 			}
 		}
 	}
