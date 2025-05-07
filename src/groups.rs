@@ -12,7 +12,8 @@ pub fn load_groups(output: &mut String) -> Result<Vec<String>, ReturnCode> {
 			eprintln!("{e}");
 			return Err(ReturnCode::NoSetupFolder);
 		}
-	}.join("Configs");
+	}
+	.join("Configs");
 
 	let groups: Vec<_> = dotfiles_dir
 		.read_dir()

@@ -297,7 +297,12 @@ impl eframe::App for TemplateApp {
 		}
 		self.check_count += 1;
 
-		egui::CentralPanel::default().frame(egui::Frame::default().fill(PANEL_FILL).inner_margin(egui::Margin::symmetric(12.0, 12.0)))
+		egui::CentralPanel::default()
+			.frame(
+				egui::Frame::default()
+					.fill(PANEL_FILL)
+					.inner_margin(egui::Margin::symmetric(12.0, 12.0)),
+			)
 			.show(ctx, |ui| {
 				// The central panel the region left after adding TopPanel's and SidePanel's
 				ui.heading("Tuckr UI");
@@ -338,7 +343,8 @@ impl eframe::App for TemplateApp {
 
 						// check if refresh button or CTRL+R are presed
 						if ui.input_mut(|i| {
-							egui::InputState::consume_shortcut(i,
+							egui::InputState::consume_shortcut(
+								i,
 								&KeyboardShortcut {
 									modifiers: Modifiers::COMMAND,
 									logical_key: egui::Key::R,
@@ -455,7 +461,7 @@ impl eframe::App for TemplateApp {
 
 fn code_editer(app: &mut TemplateApp, ui: &mut Ui) {
 	let theme = egui_extras::syntax_highlighting::CodeTheme::from_style(ui.style());
-																				 // todo patch egui_extras to use tmTheme file
+	// todo patch egui_extras to use tmTheme file
 
 	let mut layouter = |ui: &egui::Ui, code: &str, wrap_width: f32| {
 		let mut layout_job = egui_extras::syntax_highlighting::highlight(ui.ctx(), &theme, code, "bash");
