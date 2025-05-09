@@ -85,6 +85,7 @@ jobs:
           args: -- -D warnings
 
   build:
+    if: github.event_name == 'pull_request'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
